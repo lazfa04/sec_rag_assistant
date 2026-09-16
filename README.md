@@ -109,3 +109,18 @@ Extending to Microsoft's 10-K, several section titles came back mangled (e.g. `"
 - Historical filing ingestion for trend analysis across quarters
 - Agent layer: a tool that can fetch and compare across multiple filings/companies for a single query
 - Simple web UI (Streamlit) instead of REPL-only interaction
+
+### Bug found in production UI testing: cross-entity fact attribution
+
+Asking about Apple's tax rate with "All companies" selected returned a 
+confident, cited answer — but the citation pointed to an NVIDIA chunk that 
+mentioned the same generic 21% U.S. statutory rate in passing. Initial fix 
+(explicit prompt instructions against cross-company citation) reduced but 
+didn't eliminate the issue — the model would still cite a same-company chunk 
+that didn't actually contain the claimed fact, just to satisfy the instruction. 
+This revealed a broader lesson: prompt-level grounding rules are necessary but 
+not sufficient, since an LLM can still rationalize a technically-compliant but 
+substantively wrong citation. The reliable fix was moving enforcement to the 
+retrieval layer — auto-detecting a company mention in the question and 
+filtering retrieval to that company's chunks before the LLM ever sees mismatched 
+data, rather than relying on the model to self-police after the fact.
