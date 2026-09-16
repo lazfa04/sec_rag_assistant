@@ -1,0 +1,20 @@
+[
+    {"question": "What antitrust issues is Apple currently facing?", "expected_answer": "Civil antitrust lawsuits in the US alleging monopolization in 'performance smartphones' and smartphones markets; EU and other investigations into App Store terms.", "expected_section": "1A"},
+    {"question": "How does third-party developer support affect Apple's business risk?", "expected_answer": "Business depends on third-party apps/services; if developers stop supporting Apple's platforms, customers may not buy Apple products.", "expected_section": "1A"},
+    {"question": "What risk does Apple face from its licensing arrangement with Google?", "expected_answer": "Google was found to violate US antitrust law (Aug 5, 2024); court-ordered remedies could affect Apple's revenue from the search licensing deal.", "expected_section": "1A"},
+    {"question": "Why might developers focus less on Apple's platforms according to the filing?", "expected_answer": "Apple's minority market share in smartphones/PCs/tablets/wearables makes developers more inclined to focus on competitors with larger market share.", "expected_section": "1A"},
+    {"question": "What was Apple's total gross margin percentage this quarter?", "expected_answer": "50.1%", "expected_section": "2"},
+    {"question": "What was Apple's products gross margin percentage this quarter?", "expected_answer": "(confirm exact figure in doc — appeared near 46-49% range in our test)", "expected_section": "2"},
+    {"question": "What does Apple say is driving change in its gross margin this quarter?", "expected_answer": "(read Item 2's gross margin commentary, summarize in your own words)", "expected_section": "2"},
+    {"question": "What was Apple's cost of sales for the reported period?", "expected_answer": "(confirm exact figure — a number like 71,763 appeared in our earlier test, verify which period it maps to)", "expected_section": "1"},
+    {"question": "Has Apple had any defaults on senior debt obligations?", "expected_answer": "None.", "expected_section": "3 (Part II)"},
+    {"question": "Have there been material changes to Apple's market risk this period?", "expected_answer": "No material changes; refer to the 2025 Form 10-K for full market risk disclosures.", "expected_section": "3 (Part I)"},
+    {"question": "Is there any pending litigation disclosed in this filing?", "expected_answer": "(read the Legal Proceedings item, summarize what's disclosed — may reference the antitrust cases too)", "expected_section": "1 (Part II)"},
+    {"question": "Are there any mine safety disclosures in this filing?", "expected_answer": "(check — likely 'not applicable' or minimal, since Apple isn't a mining company)", "expected_section": "4 (Part II)"},
+    {"question": "What controls and procedures does Apple describe in this filing?", "expected_answer": "(summarize from Item 4, Part I — disclosure controls effectiveness statement)", "expected_section": "4 (Part I)"},
+    {"question": "What is Apple's Commission File Number?", "expected_answer": "001-36743", "expected_section": "1 (cover page / Financial Statements)"},
+    {"question": "What state is Apple incorporated in?", "expected_answer": "California", "expected_section": "1 (cover page / Financial Statements)"},
+    {"question": "What is Apple's projected revenue for fiscal year 2028?", "expected_answer": "I don't have enough information in the retrieved filings (no forward guidance that specific exists in a 10-Q).", "expected_section": "none — should refuse"},
+    {"question": "What was Apple's stock price on the day this filing was submitted?", "expected_answer": "I don't have enough information in the retrieved filings (10-Qs don't report stock price).", "expected_section": "none — should refuse"},
+    {"question": "How does Apple's risk profile compare to Samsung's?", "expected_answer": "I don't have enough information in the retrieved filings (no competitor risk comparison disclosed).", "expected_section": "none — should refuse"}
+  ]

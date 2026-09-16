@@ -12,6 +12,16 @@ def chunk_by_section(clean_text: str) -> list[dict]:
     """Split cleaned 10-K/10-Q text into Item-level section chunks."""
     matches = list(ITEM_HEADER.finditer(clean_text))
     chunks: list[dict] = []
+    if matches:
+        cover = clean_text[: matches[0].start()].strip()
+        if cover:
+            chunks.append(
+                {
+                    "item_number": "0",
+                    "item_title": "Cover Page",
+                    "text": cover,
+                }
+            )
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(clean_text)
         chunks.append(
