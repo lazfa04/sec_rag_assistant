@@ -43,9 +43,11 @@ def _user_prompt(query: str, chunks: list[dict]) -> str:
     )
 
 
-def answer_question(query: str, top_k: int = 5) -> dict:
+def answer_question(
+    query: str, top_k: int = 5, ticker: str | None = None
+) -> dict:
     """Retrieve filing chunks and ask Claude to answer with numbered citations."""
-    sources = retrieve(query, top_k)
+    sources = retrieve(query, top_k, ticker)
     if not sources:
         return {"answer": INSUFFICIENT, "sources": []}
 

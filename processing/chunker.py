@@ -1,19 +1,158 @@
 import re
 
-# Same-line title only. \s would also match a newline, which joins TOC rows
-# ("Item 1.\nBusiness") into a fake header. [^\S\n] is horizontal whitespace.
-ITEM_HEADER = re.compile(
-    r"^Item[^\S\n]+(\d{1,2}[A-Za-z]?)\.[^\S\n]+(\S.*)$",
-    re.IGNORECASE | re.MULTILINE,
+# Item number on its own line or followed by a (possibly wrapped) title.
+ITEM_LINE = re.compile(r"^Item[^\S\n]+(\d{1,2}[A-Za-z]?)\.(.*)$", re.IGNORECASE)
+PAGE_NUMBER = re.compile(r"^\d{1,4}$")
+PART_LINE = re.compile(r"^PART\s+[IVX]+\b", re.IGNORECASE)
+# Small complete words that should not be glued to the next wrapped token.
+_COMPLETE_SMALL_WORDS = frozenset({"A", "AN", "AND", "FOR", "IN", "OF", "ON", "OR", "THE", "TO"})
+_TITLE_ENDINGS = (
+    "BUSINESS",
+    "FACTORS",
+    "COMMENTS",
+    "CYBERSECURITY",
+    "PROPERTIES",
+    "PROCEEDINGS",
+    "DISCLOSURES",
+    "SECURITIES",
+    "OPERATIONS",
+    "RISK",
+    "DATA",
+    "PROCEDURES",
+    "INFORMATION",
+    "INSPECTIONS",
+    "GOVERNANCE",
+    "COMPENSATION",
+    "MATTERS",
+    "INDEPENDENCE",
+    "SERVICES",
+    "SCHEDULES",
+    "SUMMARY",
+    "RESERVED]",
+    "RESERVED",
 )
+
+
+def _is_body_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped or PAGE_NUMBER.match(stripped) or ITEM_LINE.match(stripped) or PART_LINE.match(stripped):
+        return False
+    words = stripped.split()
+    letters = re.sub(r"[^A-Za-z]", "", stripped)
+    if letters and letters.isupper():
+        return False
+    if len(words) >= 8:
+        return True
+    if re.match(
+        r"^(The|This|We|Our|In |For |On |To |None\.|Not applicable|Microsoft|Apple|Refer |Under )",
+        stripped,
+        re.I,
+    ):
+        return True
+    return bool(stripped.endswith(".") and len(words) >= 3)
+
+
+def _looks_truncated(text: str) -> bool:
+    if not text:
+        return True
+    if text[-1] in ".:;]!?":
+        return False
+    last_word = re.sub(r"[^A-Za-z]", "", text.split()[-1])
+    return bool(last_word and last_word.isupper() and len(last_word) <= 8)
+
+
+def _title_looks_complete(title: str) -> bool:
+    norm = re.sub(r"[^A-Za-z0-9\]]+$", "", title.upper())
+    return any(norm.endswith(end) for end in _TITLE_ENDINGS)
+
+
+def _is_title_continuation(prev_title: str, line: str) -> bool:
+    stripped = line.strip()
+    if not stripped or PAGE_NUMBER.match(stripped) or ITEM_LINE.match(stripped) or PART_LINE.match(stripped):
+        return False
+    if _title_looks_complete(prev_title):
+        return False
+    if _is_body_line(stripped):
+        return False
+    if _looks_truncated(prev_title):
+        return True
+    first_letters = re.sub(r"[^A-Za-z]", "", stripped.split()[0])
+    return bool(first_letters.isupper() and 1 <= len(first_letters) <= 2)
+
+
+def _join_title_fragment(left: str, right: str) -> str:
+    if not left:
+        return right
+    if not right:
+        return left
+    last_word = re.sub(r"[^A-Za-z]", "", left.split()[-1]).upper()
+    first_word = re.sub(r"[^A-Za-z]", "", right.split()[0]).upper()
+    if first_word in _COMPLETE_SMALL_WORDS:
+        return left + " " + right
+    if left[-1].isalnum() and right[0].isalnum() and last_word not in _COMPLETE_SMALL_WORDS:
+        if right[0].islower() or len(last_word) <= 3 or len(first_word) <= 7:
+            return left + right
+    return left + " " + right
+
+
+def _join_title(parts: list[str]) -> str:
+    title = ""
+    for part in parts:
+        title = _join_title_fragment(title, part)
+    return re.sub(r"\s+", " ", title).strip()
+
+
+def _read_header(lines: list[str], index: int) -> dict | None:
+    match = ITEM_LINE.match(lines[index])
+    if not match:
+        return None
+
+    item_number = match.group(1).upper()
+    same_line = re.sub(r"\s+", " ", match.group(2)).strip()
+    title_parts: list[str] = []
+    cursor = index + 1
+
+    if same_line:
+        title_parts.append(same_line)
+    elif cursor < len(lines):
+        nxt = lines[cursor].strip()
+        # TOC and some real headers put the full title on the next line, even if long.
+        if nxt and not PAGE_NUMBER.match(nxt) and not ITEM_LINE.match(nxt) and not PART_LINE.match(nxt):
+            title_parts.append(nxt)
+            cursor += 1
+
+    while cursor < len(lines) and title_parts and _is_title_continuation(_join_title(title_parts), lines[cursor]):
+        title_parts.append(lines[cursor].strip())
+        cursor += 1
+        if len(title_parts) >= 5:
+            break
+
+    lookahead = lines[cursor].strip() if cursor < len(lines) else ""
+    return {
+        "line": index,
+        "end_line": cursor,
+        "item_number": item_number,
+        "item_title": _join_title(title_parts),
+        "is_toc": bool(PAGE_NUMBER.match(lookahead)),
+    }
 
 
 def chunk_by_section(clean_text: str) -> list[dict]:
     """Split cleaned 10-K/10-Q text into Item-level section chunks."""
-    matches = list(ITEM_HEADER.finditer(clean_text))
+    lines = clean_text.splitlines()
+    headers: list[dict] = []
+    i = 0
+    while i < len(lines):
+        parsed = _read_header(lines, i)
+        if parsed and not parsed["is_toc"]:
+            headers.append(parsed)
+            i = max(parsed["end_line"], i + 1)
+        else:
+            i += 1
+
     chunks: list[dict] = []
-    if matches:
-        cover = clean_text[: matches[0].start()].strip()
+    if headers:
+        cover = "\n".join(lines[: headers[0]["line"]]).strip()
         if cover:
             chunks.append(
                 {
@@ -22,13 +161,13 @@ def chunk_by_section(clean_text: str) -> list[dict]:
                     "text": cover,
                 }
             )
-    for i, match in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(clean_text)
+    for idx, header in enumerate(headers):
+        end = headers[idx + 1]["line"] if idx + 1 < len(headers) else len(lines)
         chunks.append(
             {
-                "item_number": match.group(1).upper(),
-                "item_title": re.sub(r"\s+", " ", match.group(2)).strip(),
-                "text": clean_text[match.end() : end].strip(),
+                "item_number": header["item_number"],
+                "item_title": header["item_title"],
+                "text": "\n".join(lines[header["end_line"] : end]).strip(),
             }
         )
     return chunks
