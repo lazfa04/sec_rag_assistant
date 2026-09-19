@@ -7,7 +7,7 @@ from storage.vector_store import _dsn
 
 
 def retrieve(
-    query: str, top_k: int = 5, ticker: str | None = None
+    query: str, top_k: int = 5, ticker: str | list[str] | None = None
 ) -> list[dict]:
     """Return the top_k filing chunks closest to the query in cosine space."""
     vector = _model().encode([query], convert_to_numpy=True)[0]
@@ -26,7 +26,16 @@ def retrieve(
                 FROM filing_chunks
             """
             params: list = [vector]
-            if ticker:
+            if isinstance(ticker, list):
+                tickers = [
+                    t.strip().upper()
+                    for t in ticker
+                    if isinstance(t, str) and t.strip()
+                ]
+                if tickers:
+                    sql += " WHERE ticker = ANY(%s)"
+                    params.append(tickers)
+            elif ticker:
                 sql += " WHERE ticker = %s"
                 params.append(ticker.strip().upper())
             sql += """

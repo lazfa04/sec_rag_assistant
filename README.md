@@ -102,6 +102,7 @@ Extending to Microsoft's 10-K, several section titles came back mangled (e.g. `"
 - Only the most recent 10-K/10-Q per company is ingested; historical filings are not yet supported
 - No deduplication guard on re-ingesting the same company — re-running `ingest_company` on an already-ingested ticker creates duplicate rows (manual cleanup required for now)
 - Single-document retrieval only — no cross-filing comparison (e.g. "how did Apple's risk factors change quarter over quarter") yet
+- Multi-company questions search across all named companies (via `detect_tickers`), but retrieval ranking is shared across a single pool, not quota'd per company. If one company's language ranks more semantically similar to the query, its chunks can dominate the retrieved set even when the other named company has relevant content that never gets retrieved. The system correctly reports this limitation rather than fabricating comparison content it doesn't have, but a hard per-company retrieval quota would be a more robust fix.
 
 ## Possible extensions
 
@@ -124,3 +125,26 @@ substantively wrong citation. The reliable fix was moving enforcement to the
 retrieval layer — auto-detecting a company mention in the question and 
 filtering retrieval to that company's chunks before the LLM ever sees mismatched 
 data, rather than relying on the model to self-police after the fact.
+
+### Bug found in production UI testing: multi-company question handling
+
+Asking "Compare Apple's and Microsoft's risk factors" with "All companies" 
+selected only ever detected and searched for Apple, because the original 
+`detect_ticker()` returned just the first company mentioned in the query. 
+The resulting refusal implied no Microsoft data existed, when Microsoft's 
+filings were simply never searched. Diagnosis: retrieval was filtered to a 
+single ticker before ranking, so the second named company never entered the 
+candidate set. Fix: renamed to `detect_tickers()`, returning every company 
+named in the query; updated `retrieve()` to accept a list of tickers via 
+`WHERE ticker = ANY(%s)`; and scaled `top_k` by the number of detected 
+companies (`top_k * n`) so each company has a better chance of appearing in 
+the retrieved set rather than a fixed `top_k` being dominated by one company. 
+After the fix, retrieval genuinely searches all named companies, and the 
+system's behavior became honestly self-reporting rather than misleading — 
+when Apple's chunks dominated the retrieved set in testing (9 of 10 sources), 
+the model correctly said "I can only provide information about Apple's 
+antitrust risks; the Microsoft excerpts provided do not contain any discussion 
+of antitrust risk factors" instead of either hallucinating a Microsoft 
+comparison or giving a misleading blanket refusal. Remaining limitation 
+(see Known limitations): ranking is still shared across companies, not 
+quota'd per company.
