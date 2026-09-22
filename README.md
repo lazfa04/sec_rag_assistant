@@ -100,9 +100,8 @@ Extending to Microsoft's 10-K, several section titles came back mangled (e.g. `"
 
 - Sparse/near-empty filing sections don't retrieve reliably with dense embeddings alone (see eval results above)
 - Only the most recent 10-K/10-Q per company is ingested; historical filings are not yet supported
-- No deduplication guard on re-ingesting the same company — re-running `ingest_company` on an already-ingested ticker creates duplicate rows (manual cleanup required for now)
+- `ingest_company()` checks stored filing dates before inserting — it skips when the same or a newer filing is already stored, and replaces older filings automatically when a newer one is ingested. The replace path has not yet been exercised against a real newer filing (only verified by plan-check), since no tracked company has filed since it was added.
 - Single-document retrieval only — no cross-filing comparison (e.g. "how did Apple's risk factors change quarter over quarter") yet
-- Multi-company questions search across all named companies (via `detect_tickers`), but retrieval ranking is shared across a single pool, not quota'd per company. If one company's language ranks more semantically similar to the query, its chunks can dominate the retrieved set even when the other named company has relevant content that never gets retrieved. The system correctly reports this limitation rather than fabricating comparison content it doesn't have, but a hard per-company retrieval quota would be a more robust fix.
 
 ## Possible extensions
 
@@ -145,6 +144,16 @@ when Apple's chunks dominated the retrieved set in testing (9 of 10 sources),
 the model correctly said "I can only provide information about Apple's 
 antitrust risks; the Microsoft excerpts provided do not contain any discussion 
 of antitrust risk factors" instead of either hallucinating a Microsoft 
-comparison or giving a misleading blanket refusal. Remaining limitation 
-(see Known limitations): ranking is still shared across companies, not 
-quota'd per company.
+comparison or giving a misleading blanket refusal.
+
+**Follow-up fix — hard per-company retrieval quota.** The scaled-`top_k` 
+approach above still pooled every named ticker into one shared ranked query, 
+so a company whose language happened to rank lower could be squeezed out of 
+its own comparison. `retrieve()` now runs a separate similarity search per 
+named ticker, each getting the full `top_k`, and groups the results by company 
+in the prompt — giving predictable citation ranges (e.g. `[1]`-`[5]` for one 
+company, `[6]`-`[10]` for the next) instead of companies interleaved by score. 
+Verified: the Apple/Microsoft antitrust comparison now retrieves a guaranteed 
+5 AAPL + 5 MSFT split, and the model correctly reports that Microsoft's own 
+top-ranked risk content doesn't specifically address antitrust — a genuine 
+finding about the retrieved data, not a retrieval failure.

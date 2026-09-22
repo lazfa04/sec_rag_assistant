@@ -125,19 +125,16 @@ def answer_question(
     """Retrieve filing chunks and ask Claude to answer with numbered citations."""
     if ticker:
         resolved: str | list[str] | None = ticker.strip().upper()
-        k = top_k
     else:
         detected = detect_tickers(query, KNOWN_TICKERS)
         if len(detected) >= 2:
+            # retrieve() gives each named company its own top_k.
             resolved = detected
-            k = top_k * len(detected)
         elif len(detected) == 1:
             resolved = detected[0]
-            k = top_k
         else:
             resolved = None
-            k = top_k
-    sources = retrieve(query, k, resolved)
+    sources = retrieve(query, top_k, resolved)
     if not sources:
         return {"answer": INSUFFICIENT, "sources": []}
 

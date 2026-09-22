@@ -52,6 +52,39 @@ def create_table() -> None:
         conn.close()
 
 
+def filing_dates_for_ticker(ticker: str) -> list[str]:
+    """Return the distinct filing dates already stored for a ticker, newest first."""
+    conn = _connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT filing_date
+                FROM filing_chunks
+                WHERE ticker = %s AND filing_date IS NOT NULL
+                ORDER BY filing_date DESC
+                """,
+                (ticker.strip().upper(),),
+            )
+            return [row[0] for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def delete_chunks_for_ticker(ticker: str) -> int:
+    """Delete every stored chunk for a ticker and return how many rows were removed."""
+    conn = _connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM filing_chunks WHERE ticker = %s",
+                (ticker.strip().upper(),),
+            )
+            return cur.rowcount
+    finally:
+        conn.close()
+
+
 def insert_chunks(chunks: list[dict]) -> None:
     """Insert embedded chunk dicts into filing_chunks."""
     if not chunks:
