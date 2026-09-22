@@ -8,7 +8,12 @@ from storage.vector_store import _connect
 app = FastAPI(title="SEC Filing RAG Assistant")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Keep http://localhost:3000 listed while developing the frontend locally
+    # against this deployed backend; drop it once that is no longer needed.
+    allow_origins=[
+        "https://sec-rag-assistant.vercel.app",
+        "http://localhost:3000",
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

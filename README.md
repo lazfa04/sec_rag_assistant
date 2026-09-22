@@ -96,9 +96,13 @@ NEXT_PUBLIC_API_URL=https://your-backend.example.com
 ```
 
 Because of the `NEXT_PUBLIC_` prefix the value is inlined at build time, so a
-deployed frontend needs a rebuild after changing it. `api/main.py` currently
-allows all CORS origins; narrow that to the real frontend origin before
-deploying.
+deployed frontend needs a rebuild after changing it.
+
+`api/main.py` allows CORS requests only from the deployed frontend origin and
+`http://localhost:3000`. Matching is exact, so add your own origin there when
+serving the UI from anywhere else — Vercel preview deployments get their own
+hostnames, and `http://127.0.0.1:3000` counts as a different origin than
+`localhost`.
 
 ## Evaluation
 
