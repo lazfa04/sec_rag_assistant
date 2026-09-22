@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
-import { FileSearchIcon, SearchIcon } from "lucide-react"
+import { ArrowRightIcon, FileSearchIcon, SearchIcon } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +21,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -37,6 +37,30 @@ import { Spinner } from "@/components/ui/spinner"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 const ALL_COMPANIES = "all"
+
+const GLASS_PANEL =
+  "rounded-3xl bg-white/5 ring-1 ring-white/10 backdrop-blur-xl"
+const SECTION_LABEL =
+  "text-[0.7rem] font-medium tracking-[0.18em] text-white/40 uppercase"
+
+const QUICK_ACTIONS = [
+  {
+    label: "Apple's risk factors",
+    question: "What are Apple's main risk factors?",
+  },
+  {
+    label: "Apple vs Microsoft",
+    question: "Compare Apple's and Microsoft's antitrust risk factors",
+  },
+  {
+    label: "Tesla's tax rate",
+    question: "What is Tesla's effective tax rate?",
+  },
+  {
+    label: "NVIDIA supply chain",
+    question: "What does NVIDIA say about supply chain risk?",
+  },
+]
 
 type Source = {
   ticker?: string
@@ -116,7 +140,7 @@ export function AskForm() {
     }
   }, [mounted])
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const trimmed = question.trim()
     if (!trimmed || asking) return
@@ -152,18 +176,24 @@ export function AskForm() {
     }
   }
 
+  const handleQuickAction = (value: string) => {
+    setQuestion(value)
+  }
+
   if (!mounted) {
     return <AskFormFallback />
   }
 
   return (
-    <div className="flex flex-col gap-10">
-      <form onSubmit={onSubmit}>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="company">Company</FieldLabel>
+    <div className="flex flex-col gap-8">
+      <div className={`${GLASS_PANEL} flex flex-col gap-5 p-4 shadow-2xl shadow-black/40 sm:p-5`}>
+        <form onSubmit={handleSubmit}>
+          <FieldLabel htmlFor="question" className="sr-only">
+            Question
+          </FieldLabel>
+          <div className="flex items-center gap-2 rounded-full bg-white/5 p-1.5 ring-1 ring-white/10 transition-colors focus-within:ring-white/25">
             {loadingCompanies ? (
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-9 w-32 shrink-0 rounded-full bg-white/10" />
             ) : (
               <Select
                 value={ticker}
@@ -172,7 +202,11 @@ export function AskForm() {
                 }}
                 disabled={asking}
               >
-                <SelectTrigger id="company" className="w-full">
+                <SelectTrigger
+                  id="company"
+                  aria-label="Company"
+                  className="h-9 w-auto min-w-34 shrink-0 rounded-full border-0 bg-white/5 px-3.5 text-sm text-white/80 ring-1 ring-white/10 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                >
                   <SelectValue placeholder="Select a company">
                     {ticker === ALL_COMPANIES ? "All companies" : ticker}
                   </SelectValue>
@@ -189,11 +223,14 @@ export function AskForm() {
                 </SelectContent>
               </Select>
             )}
-          </Field>
 
-          <div className="flex items-end gap-2">
-            <Field className="flex-1">
-              <FieldLabel htmlFor="question">Question</FieldLabel>
+            <span aria-hidden="true" className="h-6 w-px shrink-0 bg-white/10" />
+
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <SearchIcon
+                aria-hidden="true"
+                className="size-4 shrink-0 text-white/40"
+              />
               <Input
                 id="question"
                 name="question"
@@ -202,78 +239,114 @@ export function AskForm() {
                 placeholder="What antitrust issues is Apple facing?"
                 disabled={asking}
                 autoComplete="off"
+                className="h-9 border-0 bg-transparent px-0 text-sm text-white placeholder:text-white/35 focus-visible:border-transparent focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
               />
-            </Field>
-            <Button type="submit" disabled={asking || !question.trim()} size="lg">
-              {asking ? (
-                <Spinner data-icon="inline-start" />
-              ) : (
-                <SearchIcon data-icon="inline-start" />
-              )}
-              {asking ? "Searching" : "Ask"}
+            </div>
+
+            <Button
+              type="submit"
+              size="icon-lg"
+              aria-label={asking ? "Searching filings" : "Ask question"}
+              disabled={asking || !question.trim()}
+              className="size-9 shrink-0 rounded-full bg-white text-neutral-950 hover:bg-white/85"
+            >
+              {asking ? <Spinner /> : <ArrowRightIcon />}
             </Button>
           </div>
-        </FieldGroup>
-      </form>
+        </form>
+
+        <div className="flex flex-col gap-2.5">
+          <p className={SECTION_LABEL}>Quick actions</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACTIONS.map((action) => (
+              <Button
+                key={action.label}
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={asking}
+                onClick={() => handleQuickAction(action.question)}
+                className="rounded-full bg-white/5 px-3.5 text-xs font-medium text-white/70 ring-1 ring-white/10 hover:bg-white/10 hover:text-white dark:hover:bg-white/10"
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {error ? (
-        <Alert variant="destructive">
+        <Alert
+          variant="destructive"
+          className="border-0 bg-red-500/10 text-red-100 ring-1 ring-red-400/20 backdrop-blur-xl"
+        >
           <AlertTitle>Request failed</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="text-red-100/70">
+            {error}
+          </AlertDescription>
         </Alert>
       ) : null}
 
       {asking ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-24 bg-white/10" />
+            <Skeleton className="h-4 w-full bg-white/10" />
+            <Skeleton className="h-4 w-5/6 bg-white/10" />
+            <Skeleton className="h-4 w-2/3 bg-white/10" />
           </div>
           <div className="flex flex-col gap-3">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-3xl bg-white/10" />
+            <Skeleton className="h-24 w-full rounded-3xl bg-white/10" />
           </div>
         </div>
       ) : null}
 
       {!asking && result ? (
         <div className="flex flex-col gap-8">
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">Answer</h2>
-            <p className="whitespace-pre-wrap text-base leading-7">{result.answer}</p>
+          <section className={`${GLASS_PANEL} flex flex-col gap-3 p-5`}>
+            <h2 className={SECTION_LABEL}>Answer</h2>
+            <p className="whitespace-pre-wrap text-base leading-7 text-white/90">
+              {result.answer}
+            </p>
           </section>
 
-          <Separator />
+          <Separator className="bg-white/10" />
 
           <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-medium text-muted-foreground">Sources</h2>
+            <h2 className={SECTION_LABEL}>Sources</h2>
             {result.sources.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/50">
                 No source chunks were returned for this answer.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
                 {result.sources.map((source, index) => (
-                  <Card key={`${source.ticker}-${source.item_number}-${index}`} size="sm">
+                  <Card
+                    key={`${source.ticker}-${source.item_number}-${index}`}
+                    size="sm"
+                    className="rounded-2xl bg-white/5 text-white/80 ring-1 ring-white/10 backdrop-blur-xl"
+                  >
                     <CardHeader>
-                      <CardTitle>
+                      <CardTitle className="text-white">
                         {source.item_title || `Item ${source.item_number}`}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-white/45">
                         {[source.ticker, source.item_number && `Item ${source.item_number}`, source.filing_date]
                           .filter(Boolean)
                           .join(" · ")}
                       </CardDescription>
                       <CardAction>
-                        <Badge variant="secondary">
+                        <Badge
+                          variant="secondary"
+                          className="bg-white/10 text-white/70 ring-1 ring-white/10 dark:bg-white/10"
+                        >
                           {similarityLabel(source.similarity)}
                         </Badge>
                       </CardAction>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
+                      <p className="text-sm leading-relaxed text-white/55">
                         {snippet(source.text ?? "")}
                       </p>
                     </CardContent>
@@ -286,13 +359,16 @@ export function AskForm() {
       ) : null}
 
       {!asking && !result && !error ? (
-        <Empty className="border border-dashed">
+        <Empty className="rounded-3xl border border-dashed border-white/15 bg-white/5 backdrop-blur-xl">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
+            <EmptyMedia
+              variant="icon"
+              className="bg-white/10 text-white ring-1 ring-white/10"
+            >
               <FileSearchIcon />
             </EmptyMedia>
-            <EmptyTitle>No answer yet</EmptyTitle>
-            <EmptyDescription>
+            <EmptyTitle className="text-white">No answer yet</EmptyTitle>
+            <EmptyDescription className="text-white/50">
               Pick a company, ask a question, and we&apos;ll retrieve the matching
               filing sections.
             </EmptyDescription>
@@ -305,21 +381,25 @@ export function AskForm() {
 
 export function AskFormFallback() {
   return (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-8 w-full" />
+    <div className="flex flex-col gap-8">
+      <div className={`${GLASS_PANEL} flex flex-col gap-5 p-4 shadow-2xl shadow-black/40 sm:p-5`}>
+        <div className="flex items-center gap-2 rounded-full bg-white/5 p-1.5 ring-1 ring-white/10">
+          <Skeleton className="h-9 w-32 shrink-0 rounded-full bg-white/10" />
+          <span aria-hidden="true" className="h-6 w-px shrink-0 bg-white/10" />
+          <Skeleton className="h-4 flex-1 bg-white/10" />
+          <Skeleton className="size-9 shrink-0 rounded-full bg-white/10" />
         </div>
-        <div className="flex items-end gap-2">
-          <div className="flex flex-1 flex-col gap-2">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-8 w-full" />
+        <div className="flex flex-col gap-2.5">
+          <Skeleton className="h-3 w-24 bg-white/10" />
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-32 rounded-full bg-white/10" />
+            <Skeleton className="h-7 w-28 rounded-full bg-white/10" />
+            <Skeleton className="h-7 w-24 rounded-full bg-white/10" />
+            <Skeleton className="h-7 w-36 rounded-full bg-white/10" />
           </div>
-          <Skeleton className="h-9 w-20" />
         </div>
       </div>
-      <Skeleton className="h-32 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-3xl bg-white/10" />
     </div>
   )
 }

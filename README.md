@@ -78,6 +78,28 @@ result = answer_question("What are Apple's main risk factors?", ticker="AAPL")
 print(result["answer"])
 ```
 
+## Running the app
+
+Start the API from the project root, and the UI from `frontend/`:
+
+```bash
+uvicorn api.main:app --reload          # http://localhost:8000
+cd frontend && npm install && npm run dev   # http://localhost:3000
+```
+
+The frontend reads the backend URL from `NEXT_PUBLIC_API_URL`, falling back to
+`http://localhost:8000` when unset. To point the UI at a deployed backend, copy
+`frontend/.env.example` to `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-backend.example.com
+```
+
+Because of the `NEXT_PUBLIC_` prefix the value is inlined at build time, so a
+deployed frontend needs a rebuild after changing it. `api/main.py` currently
+allows all CORS origins; narrow that to the real frontend origin before
+deploying.
+
 ## Evaluation
 
 Ran an 18-question hand-written eval set against Apple's Q3 2026 10-Q, covering factual/numeric lookups, risk-factor reasoning, near-empty-section edge cases, and deliberately out-of-scope questions designed to test whether the system correctly refuses rather than hallucinates.
